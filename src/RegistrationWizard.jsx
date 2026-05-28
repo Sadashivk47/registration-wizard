@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import PersonalInfoStep from "./components/PersonalInfoStep";
 import AccountDetailsStep from "./components/AccountDetailsStep";
-import ReviewSubmitStep from  "./components/ReviewSubmitStep";
+import ReviewSubmitStep from "./components/ReviewSubmitStep";
 
 import "./styles/registration.css";
 
@@ -34,6 +34,7 @@ const steps = [
 export default function RegistrationWizard() {
   const [step, setStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [reviewData, setReviewData] = useState(null);
 
   const {
     register,
@@ -48,38 +49,35 @@ export default function RegistrationWizard() {
 
   const nextStep = async () => {
     let fields = [];
-
-    if (step === 1) {
-      fields = ["firstName", "lastName", "dob"];
-    }
-
-    if (step === 2) {
-      fields = ["email", "password", "confirmPassword"];
-    }
+    if (step === 1) fields = ["firstName", "lastName", "dob"];
+    if (step === 2) fields = ["email", "password", "confirmPassword"];
 
     const valid = await trigger(fields);
-
     if (valid) {
-      setStep(step + 1);
+      if (step === 2) {
+        setReviewData(getValues());
+      }
+      setStep((prev) => prev + 1);
     }
   };
 
-  const prevStep = () => {
-    setStep(step - 1);
-  };
+  const prevStep = () => setStep((prev) => prev - 1);
 
   const onSubmit = (data) => {
     console.log("Submitted Data:", data);
     setIsSubmitted(true);
   };
 
+  // Manually call handleSubmit only when user clicks Submit on step 3
+  const handleFinalSubmit = () => {
+    handleSubmit(onSubmit)();
+  };
+
   if (isSubmitted) {
     return (
       <div className="wizard-container success-container">
         <div className="success-icon">✓</div>
-
         <h2>Registration Successful</h2>
-
         <p>
           Account created for <strong>{getValues("email")}</strong>
         </p>
@@ -90,12 +88,8 @@ export default function RegistrationWizard() {
   return (
     <div className="wizard-container">
       <div className="wizard-header">
-        <p className="step-label">
-          Step {step} of 3
-        </p>
-
+        <p className="step-label">Step {step} of 3</p>
         <h1>{steps[step - 1]}</h1>
-
         <div className="progress-bar">
           <div
             className="progress-fill"
@@ -104,7 +98,9 @@ export default function RegistrationWizard() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)}>
+      {/* No onSubmit on the form — submission is handled manually */}
+      <form noValidate>
+
         {step === 1 && (
           <PersonalInfoStep register={register} errors={errors} />
         )}
@@ -113,7 +109,9 @@ export default function RegistrationWizard() {
           <AccountDetailsStep register={register} errors={errors} />
         )}
 
-        {step === 3 && <ReviewSubmitStep data={getValues()} />}
+        {step === 3 && reviewData && (
+          <ReviewSubmitStep data={reviewData} />
+        )}
 
         <div className="button-group">
           {step > 1 ? (
@@ -137,7 +135,11 @@ export default function RegistrationWizard() {
               Next
             </button>
           ) : (
-            <button type="submit" className="primary-btn">
+            <button
+              type="button"
+              className="primary-btn"
+              onClick={handleFinalSubmit}
+            >
               Submit
             </button>
           )}
